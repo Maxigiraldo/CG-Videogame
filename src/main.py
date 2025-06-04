@@ -26,7 +26,7 @@ fondo = pygame.transform.scale(fondo, (SCREEN_WIDTH, SCREEN_HEIGHT))
 scroll = 0
 
 # Inicialización de música y efectos de sonido ---------------------------------------------------
-volume = 0.5  # Volumen de la música y efectos de sonido
+volume_music = 0.8  # Volumen de la música y efectos de sonido
 menu_music = "assets/music/menu-soundtrack.mp3"
 main_music = "assets/music/main-music-soundtrack.mp3"
 boss_music = "assets/music/boss-soundtrack.mp3"
@@ -36,6 +36,8 @@ options_sound = pygame.mixer.Sound("assets/sounds/option-change-sound.wav")
 powerup_sound = pygame.mixer.Sound("assets/sounds/powerup-sound.wav")
 lose_sound = pygame.mixer.Sound("assets/sounds/lose.wav")
 victory_sound = pygame.mixer.Sound("assets/sounds/victory.wav")
+warning_sound = pygame.mixer.Sound("assets/sounds/warning.wav")
+volume_sound = 0.4  # Volumen de los efectos de sonido
 
 # Inicialización de objetos y variables ---------------------------------------------------------------
 player = Player(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 60)
@@ -43,7 +45,7 @@ enemies = pygame.sprite.Group()
 powerups = pygame.sprite.Group()
 enemy_bullets = pygame.sprite.Group()
 boss_group = pygame.sprite.Group()
-score_boss = 4000
+score_boss = 1000
 
 # Inicialización del gestor de guardado y puntuación -----------------------------------------------
 save_manager = SaveManager()
@@ -60,7 +62,7 @@ duracion_alerta = 180  # ~3 segundos a 60 FPS
 
 # Bucle principal del juego ---------------------------------------------------------------------------
 running = True
-load_music(menu_music, bucle=-1, volume=volume)  # Cargar música del menú
+load_music(menu_music, bucle=-1, volume=volume_music)  # Cargar música del menú
 
 # Mostrar menú principal y manejar la selección de juego ------------------------------------------------
 inicio = menu_principal(screen, options_sound)
@@ -99,7 +101,7 @@ else:
         enemies.empty()
         powerups.empty()
         enemy_bullets.empty()
-    load_music(main_music, bucle=-1, volume=volume)  # Cargar música principal del juego
+    load_music(main_music, bucle=-1, volume=volume_music)  # Cargar música principal del juego
 
 score_boss *= fase_actual  # Ajustar el puntaje del jefe según la fase actual
 
@@ -124,7 +126,7 @@ while running:
             if event.key == pygame.K_z:
                 player.shoot()
                 shoot_sound.play()
-                shoot_sound.set_volume(volume)  # Ajustar volumen del sonido de disparo
+                shoot_sound.set_volume(volume_sound)  # Ajustar volumen del sonido de disparo
             elif event.key == pygame.K_x:
                 player.dash()
             elif event.key == pygame.K_c and player.charge == player.charge_max:
@@ -171,7 +173,7 @@ while running:
     colision_powerups = pygame.sprite.spritecollide(player, powerups, True)
     for p in colision_powerups:
         powerup_sound.play()
-        powerup_sound.set_volume(volume)
+        powerup_sound.set_volume(volume_sound)
         if p.tipo == "health":
             player.health = min(player.max_health, player.health + 20)
         elif p.tipo == "shoot":
@@ -229,7 +231,7 @@ while running:
     if mostrar_alerta_boss:
         contador_alerta -= 1
         if contador_alerta <= 0:
-            load_music(boss_music, bucle=-1, volume=volume)  # Cambiar música al jefe
+            load_music(boss_music, bucle=-1, volume=volume_music)  # Cambiar música al jefe
             mostrar_alerta_boss = False
             boss = Boss()
             boss_group.add(boss)
@@ -292,8 +294,7 @@ while running:
     enemies.draw(screen)
     if boss:
         boss.draw(screen)
-    for enemy in enemies:
-        enemy_bullets.draw(screen)
+    enemy_bullets.draw(screen)
     
     # Dibujar HUD y puntuación ------------------------------------------------
     player.draw_hearts(screen)
@@ -304,14 +305,17 @@ while running:
 
     # Mostrar alerta de jefe si corresponde --------------------------------
     if mostrar_alerta_boss:
-        alerta_font = pygame.font.SysFont("consolas", 24)
+        warning_sound.play()
+        warning_sound.set_volume(volume_sound)  # Ajustar volumen del sonido de alerta
+        alerta_font = pygame.font.Font("assets/fonts/airstrike.ttf", 30)
         alerta_text = alerta_font.render("¡ALERTA!", True, (255, 100, 50))
-        screen.blit(alerta_text, (int(SCREEN_WIDTH * 0.39), int(SCREEN_HEIGHT * 0.5)))
+        screen.blit(alerta_text, (int(SCREEN_WIDTH * 0.35), int(SCREEN_HEIGHT * 0.5)))
     
     # Verificar si el jefe ha sido derrotado y desbloquear fase ------------------------
     if boss_defeated and score_manager.score > 0:
         score_manager.add_points(500)
         victory_sound.play()
+        victory_sound.set_volume(volume_sound)  # Ajustar volumen del sonido de victoria
         if fase_actual + 1 not in fases_desbloqueadas:
             fases_desbloqueadas.append(fase_actual + 1)
             fase_actual += 1
@@ -330,7 +334,7 @@ while running:
         pygame.time.set_timer(SPAWN_EVENT, 0)  # Desactivar generación de enemigos
         
         # Mostrar mensaje de fase completada
-        font = pygame.font.Font("assets/fonts/Orbitron-VariableFont_wght.ttf", 30)
+        font = pygame.font.Font("assets/fonts/airstrike.ttf", 30)
         texto = font.render("¡Fase Completada!", True, (0, 255, 0))
         screen.blit(texto, (100, 300))
         pygame.display.flip()
@@ -346,7 +350,7 @@ while running:
         difficulty = max(400, base_difficulty - (fase_actual - 1) * 150)  # Aumentar dificultad con cada fase, mínimo 400ms
         pygame.time.set_timer(SPAWN_EVENT, difficulty)  # Reiniciar temporizador de generación de enemigos
         boss_defeated = False
-        load_music(main_music, bucle=-1, volume=volume)  # Volver a la música principal
+        load_music(main_music, bucle=-1, volume=volume_music)  # Volver a la música principal
     
     # Verificar si el jugador ha perdido --------------------------------
     if player.health <= 0:
@@ -357,14 +361,20 @@ while running:
             enemies.empty()
             enemy_bullets.empty()
             powerups.empty()
-            score_manager.reset()
-            score_boss = 2000 * fase_actual  # Reiniciar puntaje del jefe 
+            if boss:
+                boss_group.empty()
             boss = None
             boss_defeated = False
+            if mostrar_alerta_boss:
+                mostrar_alerta_boss = False
+            score_manager.reset()
+            player.charge = 0
+            player.charge_status = False
+            player.rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 60)
             # Evitar duplicados
             pygame.time.set_timer(SPAWN_EVENT, 0)  # Desactivarlo primero
             pygame.time.set_timer(SPAWN_EVENT, difficulty)  # Activarlo de nuevo
-            load_music(main_music, bucle=-1, volume=volume)  # Volver a la música principal
+            load_music(main_music, bucle=-1, volume=volume_music)  # Volver a la música principal
 
         else:
             running = False
