@@ -12,4 +12,3 @@ def load_music(path, bucle=-1, volume=0.5):
     pygame.mixer.music.load(path)
     pygame.mixer.music.set_volume(volume)  # Ajusta el volumen según sea necesario
     pygame.mixer.music.play(bucle)  # Reproduce la música en bucle
-    print(f"Música cargada y reproducida desde {path} con volumen {volume}")

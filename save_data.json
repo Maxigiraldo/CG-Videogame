@@ -1,6 +1,7 @@
 {
-    "fase_actual": 1,
+    "fase_actual": 2,
     "fases_desbloqueadas": [
-        1
+        1,
+        2
     ]
 }
